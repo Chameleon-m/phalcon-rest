@@ -172,7 +172,24 @@ class RestView extends View
                 $cachedView = $cache->start($key, $lifetime);
                 if ($cachedView !== null) {
                     $this->data = $cachedView;
+                    // Костыль
 
+                    /** @var \Phalcon\Http\RequestInterface $request */
+                    $request = $this->getDI()->get('request');
+
+                    /** @var \Phalcon\Http\ResponseInterface $response */
+                    $response = $this->getDI()->get('response');
+                    
+                    if ($request->has('callback')) {
+                        $callback = $request->get('callback');
+                        $cachedView = "$callback($cachedView);";
+                        $content_type = 'application/javascript';
+                    } else {
+                        $content_type = 'application/json';
+                    }
+
+                    $response->setHeader('Content-Type', $content_type);
+                    $this->setContent($cachedView);
                     return null;
                 }
             }
@@ -212,6 +229,10 @@ class RestView extends View
             }
             if (!$silence) {
                 throw new Exception("View '" . $viewsDirPath . "' was not found in the views directory");
+            }
+        } else {
+            if (!is_null($cache) && $cache->isStarted() === true) {
+                $cache->save($key, $this->getContent(), $lifetime);
             }
         }
     }

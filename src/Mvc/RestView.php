@@ -136,14 +136,8 @@ class RestView extends View
 
         if (!is_null($cache)) {
             if ($cache->isStarted() == false) {
-                $key = '';
+                $key = null;
                 $lifetime = null;
-                
-                $defaultBackendOptions = $cache->getOptions();
-                
-                if(isset($defaultBackendOptions['prefix'])) {
-                    $key = $defaultBackendOptions['prefix'];
-                }
                 
                 if($cache->getFrontend() instanceof \Phalcon\Cache\FrontendInterface){
                     $lifetime = $cache->getFrontend()->getLifetime();
@@ -156,7 +150,7 @@ class RestView extends View
                         $cacheOptions = $viewOptions['cache'];
                         if (is_array($cacheOptions)) {
                             if (isset($cacheOptions['key'])) {
-                                $key .= $cacheOptions['key'];
+                                $key = $cacheOptions['key'];
                             }
                             if (isset($cacheOptions['lifetime'])) {
                                 $lifetime = $cacheOptions['lifetime'];
@@ -165,7 +159,7 @@ class RestView extends View
                     }
                 }
 
-                if ($key === '') {
+                if ($key === null) {
                     $key = md5($viewPath);
                 }
 

@@ -127,17 +127,27 @@ class RestView extends View
         return $engines;
     }
 
-    protected function _engineRender($engines, $viewPath, $silence, $mustClean, $cache = null)
+    protected function _engineRender($engines, $viewPath, $silence, $mustClean, \Phalcon\Cache\BackendInterface $cache = null)
     {
         $notExists = true;
         $viewsDir = $this->_viewsDir;
         $basePath = $this->_basePath;
         $viewsDirPath = $basePath . $viewsDir . $viewPath;
 
-        if (is_object($cache)) {
+        if (!is_null($cache)) {
             if ($cache->isStarted() == false) {
-                $key = null;
+                $key = '';
                 $lifetime = null;
+                
+                $defaultBackendOptions = $cache->getOptions();
+                
+                if(isset($defaultBackendOptions['prefix'])) {
+                    $key = $defaultBackendOptions['prefix'];
+                }
+                
+                if($cache->getFrontend() instanceof \Phalcon\Cache\FrontendInterface){
+                    $lifetime = $cache->getFrontend()->getLifetime();
+                }
 
                 $viewOptions = $this->_options;
 
@@ -146,7 +156,7 @@ class RestView extends View
                         $cacheOptions = $viewOptions['cache'];
                         if (is_array($cacheOptions)) {
                             if (isset($cacheOptions['key'])) {
-                                $key = $cacheOptions['key'];
+                                $key .= $cacheOptions['key'];
                             }
                             if (isset($cacheOptions['lifetime'])) {
                                 $lifetime = $cacheOptions['lifetime'];
@@ -155,7 +165,7 @@ class RestView extends View
                     }
                 }
 
-                if ($key === null) {
+                if ($key === '') {
                     $key = md5($viewPath);
                 }
 
@@ -174,21 +184,21 @@ class RestView extends View
 
         $viewParams = $this->_viewParams;
         $eventsManager = $this->_eventsManager;
-
+        $eventsManagerIsObject = is_object($eventsManager);
         foreach ($engines as $extension => $engine) {
             $viewEnginePath = $viewsDirPath . $extension;
             if (file_exists($viewEnginePath)) {
-                if (is_object($eventsManager)) {
+                if ($eventsManagerIsObject) {
                     $this->_activeRenderPath = $viewEnginePath;
                     if ($eventsManager->fire('view:beforeRenderView', $this, $viewEnginePath) === false) {
                         continue;
                     }
                 }
-
+                
                 $engine->render($viewEnginePath, $viewParams, $mustClean);
 
                 $notExists = false;
-                if (is_object($eventsManager)) {
+                if ($eventsManagerIsObject) {
                     $eventsManager->fire('view:afterRenderView', $this);
                 }
                 break;
